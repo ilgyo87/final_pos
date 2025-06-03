@@ -2,6 +2,23 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+type Screen = {
+  name: string;
+  title: string;
+  headerShown: boolean;
+};
+
+const screens: Screen[] = [
+  { name: 'index', title: 'Home', headerShown: false },
+  { name: 'dashboard', title: 'Dashboard', headerShown: false },
+  { name: 'customers', title: 'Customers', headerShown: true },
+  { name: 'products', title: 'Products', headerShown: true },
+  { name: 'orders', title: 'Orders', headerShown: true },
+  { name: 'employees', title: 'Employees', headerShown: true },
+  { name: 'settings', title: 'Settings', headerShown: true },
+  { name: 'reports', title: 'Reports', headerShown: true },
+];
+
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
@@ -21,31 +38,16 @@ export default function RootLayout() {
           },
         }}
       >
-        <Stack.Screen 
-          name="index"
-          options={{ headerShown: false }}
-        />
-        <Stack.Screen 
-          name="dashboard" 
-          options={{ 
-            title: 'Dashboard',
-            headerShown: false
-          }} 
-        />
-        <Stack.Screen 
-          name="customers" 
-          options={{ 
-            title: 'Customers',
-            headerShown: true
-          }} 
-        />
-        <Stack.Screen 
-          name="employees" 
-          options={{ 
-            title: 'Employees',
-            headerShown: true
-          }} 
-        />
+        {screens.map((screen) => (
+          <Stack.Screen
+            key={screen.name}
+            name={screen.name}
+            options={{
+              title: screen.title,
+              headerShown: screen.headerShown,
+            }}
+          />
+        ))}
       </Stack>
     </SafeAreaProvider>
   );

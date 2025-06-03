@@ -7,6 +7,7 @@
     "android": "expo run:android",
     "ios": "expo run:ios --device",
     "web": "expo start --web",
+    "fix:watchman": "watchman watch-del '/Users/iggy/coding_projects/final_pos' && watchman watch-project '/Users/iggy/coding_projects/final_pos'",
     "clean": "rm -rf node_modules package-lock.json && npm install --legacy-peer-deps",
     "clean:ios": "rm -rf ios/build && rm -rf ios/Pods ios/Podfile.lock && rm -rf ~/Library/Developer/Xcode/DerivedData/* && cd ios && pod install --repo-update && cd .."
   },
@@ -16,7 +17,6 @@
     "@aws-amplify/ui-react-native": "^2.5.3",
     "@react-native-async-storage/async-storage": "^2.1.2",
     "@react-native-community/netinfo": "^11.4.1",
-    "@types/qrcode": "^1.5.5",
     "aws-amplify": "^6.15.0",
     "expo": "~53.0.9",
     "expo-constants": "^17.1.6",
@@ -36,7 +36,10 @@
     "react-native-svg": "^15.12.0",
     "react-native-url-polyfill": "^2.0.0",
     "react-native-view-shot": "^4.0.3",
-    "react-native-webview": "^13.14.0"
+    "react-native-webview": "^13.14.0",
+    "@react-navigation/native": "^7.1.10",
+    "@react-navigation/native-stack": "^7.3.14",
+    "@react-navigation/elements": "^2.4.3"
   },
   "devDependencies": {
     "@aws-amplify/backend": "^1.16.1",

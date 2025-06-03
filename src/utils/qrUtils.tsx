@@ -1,8 +1,6 @@
 import React from 'react';
 import QRCodeSVG from 'react-native-qrcode-svg';
 
-// Simple QRCode component for use in your app
-// Usage: <QRCode value="some string" size={200} />
 export type QRCodeProps = {
   value: string;
   size?: number;

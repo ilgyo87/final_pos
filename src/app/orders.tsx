@@ -4,7 +4,7 @@ import { generateLabelHTML, printLabel } from '../utils/printUtils';
 import { QRCode } from '../utils/qrUtils';
 import { captureRef } from 'react-native-view-shot';
 
-export default function Customers() {
+export default function Orders() {
   const [isPrinting, setIsPrinting] = useState(false);
 
 

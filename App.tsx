@@ -3,7 +3,7 @@ import 'react-native-url-polyfill/auto';
 import { Amplify } from 'aws-amplify';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
-import { Slot, useRouter } from 'expo-router';
+import { Slot } from 'expo-router';
 import outputs from './amplify_outputs.json';
 
 // Configure Amplify
@@ -11,7 +11,6 @@ Amplify.configure(outputs);
 
 function RootLayoutNav() {
   const [isLoading, setIsLoading] = useState(true);
-  const router = useRouter();
 
   useEffect(() => {
     // Simple loading timeout for now

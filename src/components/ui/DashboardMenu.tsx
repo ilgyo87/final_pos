@@ -3,13 +3,13 @@ import { View, StyleSheet, TouchableOpacity, Text, Dimensions, FlatList } from '
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 
-export type MenuItem = {
+export interface MenuItem {
   id: string;
   title: string;
   icon: keyof typeof Ionicons.glyphMap;
   href: string;
   color: string;
-};
+}
 
 interface DashboardMenuProps {
   menuItems: MenuItem[];
@@ -31,7 +31,6 @@ export const DashboardMenu: React.FC<DashboardMenuProps> = ({
         backgroundColor: item.color, 
         width: itemSize, 
         height: itemHeight,
-        paddingVertical: 15
       }]}
       onPress={() => router.push(item.href as any)}
     >
@@ -45,10 +44,10 @@ export const DashboardMenu: React.FC<DashboardMenuProps> = ({
       <FlatList
         data={menuItems}
         renderItem={renderItem}
-        keyExtractor={(item: MenuItem) => item.id}
+        keyExtractor={(item) => item.id}
         numColumns={numColumns}
         contentContainerStyle={styles.gridContainer}
-        columnWrapperStyle={styles.columnWrapper}
+        columnWrapperStyle={numColumns > 1 ? styles.columnWrapper : undefined}
       />
     </View>
   );
@@ -75,6 +74,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
     shadowRadius: 2,
+    paddingVertical: 15,
   },
   menuItemText: {
     color: 'white',

@@ -11,13 +11,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  StyleProp,
-  ViewStyle,
 } from 'react-native';
-import { Control, Controller, FieldValues, FieldErrors } from 'react-hook-form';
+import { Control, Controller, FieldValues, FieldErrors, Path } from 'react-hook-form';
 import { Ionicons } from '@expo/vector-icons';
+import { FormField } from '../../utils/types';
 
-// Common form field configurations that can be reused across the app
+// Predefined form field configurations
 export const formFields = {
   customer: [
     {
@@ -44,7 +43,7 @@ export const formFields = {
       name: 'phone',
       label: 'Phone Number',
       placeholder: 'Enter phone number',
-      keyboardType: 'numeric',
+      keyboardType: 'phone-pad',
       leftIcon: 'call-outline',
       required: true,
     },
@@ -62,147 +61,106 @@ export const formFields = {
         },
       },
     },
-  ],
-} as const;
+  ] as FormField[],
+};
 
-// Type for the form fields
-export interface FormField {
-  name: string;
-  label: string;
-  placeholder?: string;
-  type?: 'text' | 'number' | 'email' | 'password' | 'tel' | 'multiline';
-  keyboardType?: 'default' | 'number-pad' | 'decimal-pad' | 'numeric' | 'email-address' | 'phone-pad';
-  required?: boolean;
-  validation?: Record<string, unknown>;
-  autoCapitalize?: 'none' | 'sentences' | 'words' | 'characters';
-  secureTextEntry?: boolean;
-  disabled?: boolean;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
-  onRightIconPress?: () => void;
-  multiline?: boolean;
-  numberOfLines?: number;
-}
-
-interface DynamicFormProps {
-  control: Control<FieldValues>;
-  errors: FieldErrors<FieldValues>;
+interface DynamicFormProps<T extends FieldValues = FieldValues> {
+  control: Control<T>;
+  errors: FieldErrors<T>;
   fields: FormField[];
   onSubmit: () => void;
   submitText?: string;
-  showSubmitButton?: boolean;
   loading?: boolean;
   isVisible?: boolean;
   onClose?: () => void;
-  containerStyle?: StyleProp<ViewStyle>;
-  scrollViewStyle?: StyleProp<ViewStyle>;
-  formContainerStyle?: StyleProp<ViewStyle>;
 }
 
-export const DynamicForm: React.FC<DynamicFormProps> = ({
+export function DynamicForm<T extends FieldValues = FieldValues>({
   control,
   errors,
   fields,
   onSubmit,
   submitText = 'Submit',
-  showSubmitButton = true,
   loading = false,
   isVisible = true,
   onClose,
-  containerStyle,
-  scrollViewStyle,
-  formContainerStyle,
-}) => {
-  const renderInput = (field: FormField) => {
-    return (
-      <View key={field.name} style={styles.fieldContainer}>
-        <Text style={styles.label}>
-          {field.label}
-          {field.required && <Text style={styles.required}> *</Text>}
-        </Text>
-        <View style={[
-          styles.inputContainer,
-          errors[field.name] && styles.inputContainerError
-        ]}>
-          {field.leftIcon && (
-            <Ionicons
-              name={field.leftIcon}
-              size={20}
-              color="#666"
-              style={styles.leftIcon}
+}: DynamicFormProps<T>) {
+  const renderInput = (field: FormField) => (
+    <View key={field.name} style={styles.fieldContainer}>
+      <Text style={styles.label}>
+        {field.label}
+        {field.required && <Text style={styles.required}> *</Text>}
+      </Text>
+      <View style={[
+        styles.inputContainer,
+        errors[field.name as Path<T>] && styles.inputContainerError
+      ]}>
+        {field.leftIcon && (
+          <Ionicons
+            name={field.leftIcon as any}
+            size={20}
+            color="#666"
+            style={styles.leftIcon}
+          />
+        )}
+        <Controller
+          control={control}
+          rules={{
+            required: field.required ? `${field.label} is required` : false,
+            ...field.validation,
+          }}
+          render={({ field: { onChange, onBlur, value } }) => (
+            <TextInput
+              style={[
+                styles.input,
+                field.multiline && styles.multilineInput,
+                errors[field.name as Path<T>] && styles.inputError,
+              ]}
+              placeholder={field.placeholder || field.label}
+              placeholderTextColor="#999"
+              keyboardType={field.keyboardType}
+              autoCapitalize={field.autoCapitalize || 'none'}
+              secureTextEntry={field.secureTextEntry}
+              multiline={field.multiline}
+              numberOfLines={field.numberOfLines}
+              editable={!field.disabled}
+              onBlur={onBlur}
+              onChangeText={onChange}
+              value={value as string}
             />
           )}
-          <Controller
-            control={control}
-            rules={{
-              required: field.required ? `${field.label} is required` : false,
-              ...field.validation,
-            }}
-            render={({ field: { onChange, onBlur, value } }) => (
-              <TextInput
-                style={[
-                  styles.input,
-                  field.multiline && styles.multilineInput,
-                  errors[field.name] && styles.inputError,
-                ]}
-                placeholder={field.placeholder || field.label}
-                placeholderTextColor="#999"
-                keyboardType={field.keyboardType}
-                autoCapitalize={field.autoCapitalize || 'none'}
-                secureTextEntry={field.secureTextEntry}
-                multiline={field.multiline}
-                numberOfLines={field.numberOfLines}
-                editable={!field.disabled}
-                onBlur={onBlur}
-                onChangeText={onChange}
-                value={value as string}
-              />
-            )}
-            name={field.name}
-          />
-          {field.rightIcon && (
-            <TouchableOpacity 
-              onPress={field.onRightIconPress} 
-              style={styles.rightIcon}
-            >
-              <Ionicons name={field.rightIcon} size={20} color="#666" />
-            </TouchableOpacity>
-          )}
-        </View>
-        {errors[field.name] && (
-          <Text style={styles.errorText}>
-            {String(errors[field.name]?.message || `${field.label} is required`)}
-          </Text>
-        )}
+          name={field.name as Path<T>}
+        />
       </View>
-    );
-  };
-
-  const formContent = (
-    <View style={[styles.formContent, formContainerStyle]}>
-      {fields.map(renderInput)}
-      {showSubmitButton && (
-        <TouchableOpacity
-          style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-          onPress={onSubmit}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitText}>{submitText}</Text>
-          )}
-        </TouchableOpacity>
+      {errors[field.name as Path<T>] && (
+        <Text style={styles.errorText}>
+          {String(errors[field.name as Path<T>]?.message || `${field.label} is required`)}
+        </Text>
       )}
     </View>
   );
 
-  // If isVisible is false, just render the form content directly
+  const formContent = (
+    <View style={styles.formContent}>
+      {fields.map(renderInput)}
+      <TouchableOpacity
+        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+        onPress={onSubmit}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.submitText}>{submitText}</Text>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   if (!isVisible) {
     return formContent;
   }
 
-  // Otherwise, wrap in modal and keyboard handling
   return (
     <Modal
       visible={isVisible}
@@ -211,32 +169,28 @@ export const DynamicForm: React.FC<DynamicFormProps> = ({
       onRequestClose={onClose}
     >
       <TouchableWithoutFeedback onPress={onClose}>
-        <View style={[styles.modalOverlay, containerStyle]}>
+        <View style={styles.modalOverlay}>
           <KeyboardAvoidingView 
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 64 : 0}
             style={styles.keyboardAvoidingView}
           >
-            <ScrollView 
-              style={[styles.scrollView, scrollViewStyle]}
-              contentContainerStyle={styles.scrollViewContent}
-              keyboardShouldPersistTaps="handled"
-            >
-              <TouchableWithoutFeedback>
+            <TouchableWithoutFeedback>
+              <ScrollView 
+                style={styles.scrollView}
+                contentContainerStyle={styles.scrollViewContent}
+                keyboardShouldPersistTaps="handled"
+              >
                 {formContent}
-              </TouchableWithoutFeedback>
-            </ScrollView>
+              </ScrollView>
+            </TouchableWithoutFeedback>
           </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
     </Modal>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
   formContent: {
     width: '100%',
     padding: 16,
@@ -252,18 +206,13 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     backgroundColor: '#fff',
-    borderRadius: 20,
-    borderBottomLeftRadius: 20,
-    borderBottomRightRadius: 20,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     maxHeight: '90%',
-    width: '100%',
-    paddingBottom: 0,
-    overflow: 'hidden',
   },
   scrollViewContent: {
     padding: 24,
-    paddingBottom: 80, // Extra padding at the bottom for better spacing
-    minHeight: '100%',
+    paddingBottom: 40,
   },
   fieldContainer: {
     marginBottom: 20,
@@ -286,6 +235,7 @@ const styles = StyleSheet.create({
   },
   inputContainerError: {
     borderColor: '#ff4444',
+    borderWidth: 1,
   },
   input: {
     flex: 1,
@@ -303,9 +253,6 @@ const styles = StyleSheet.create({
   },
   leftIcon: {
     marginRight: 8,
-  },
-  rightIcon: {
-    padding: 8,
   },
   errorText: {
     marginTop: 4,

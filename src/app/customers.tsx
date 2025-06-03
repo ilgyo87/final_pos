@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useForm } from 'react-hook-form';
-import type { Control, FieldValues } from 'react-hook-form';
 import { SearchBar } from '../components/customers/SearchBar';
 import { CustomerList } from '../components/customers/CustomerList';
 import { CreateCustomerButton } from '../components/customers/CreateCustomerButton';
-import { DynamicForm, FormField, formFields } from '../components/forms/DynamicForm';
+import { DynamicForm, formFields } from '../components/forms/DynamicForm';
+import { Customer } from '../utils/types';
 
-// Mock data - replace with your actual data
-const MOCK_CUSTOMERS = [
+// Mock data - replace with actual data source
+const MOCK_CUSTOMERS: Customer[] = [
   {
     id: '1',
     firstName: 'John',
@@ -24,15 +24,12 @@ const MOCK_CUSTOMERS = [
   },
 ];
 
-interface Customer {
-  id: string;
+type CustomerFormData = {
   firstName: string;
   lastName: string;
-  phone?: string;
-  email?: string;
-}
-
-const customerFormFields: FormField[] = [...formFields.customer];
+  email: string;
+  phone: string;
+};
 
 export default function CustomersScreen() {
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,20 +37,13 @@ export default function CustomersScreen() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  type FormData = {
-    firstName: string;
-    lastName: string;
-    email: string;
-    phone: string;
-  };
-
-  const { control, handleSubmit, reset, formState: { errors } } = useForm<FormData>();
+  const { control, handleSubmit, reset, formState: { errors } } = useForm<CustomerFormData>();
 
   const filteredCustomers = customers.filter(
     (customer) =>
       customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (customer.phone && customer.phone.includes(searchQuery)) ||
+      customer.phone.includes(searchQuery) ||
       (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
@@ -61,7 +51,7 @@ export default function CustomersScreen() {
     setIsFormVisible(true);
   };
 
-  const onSubmit = (data: any) => {
+  const onSubmit = (data: CustomerFormData) => {
     setIsSubmitting(true);
     
     // Simulate API call
@@ -100,18 +90,15 @@ export default function CustomersScreen() {
       <CreateCustomerButton onPress={handleAddCustomer} />
 
       {isFormVisible && (
-        <DynamicForm
-          control={control as unknown as Control<FieldValues>}
+        <DynamicForm<CustomerFormData>
+          control={control}
           errors={errors}
-          fields={customerFormFields}
+          fields={formFields.customer}
           onSubmit={handleSubmit(onSubmit)}
           submitText={isSubmitting ? 'Saving...' : 'Save Customer'}
           loading={isSubmitting}
           isVisible={isFormVisible}
           onClose={closeForm}
-          containerStyle={styles.modalOverlay}
-          scrollViewStyle={styles.scrollView}
-          formContainerStyle={styles.formContainer}
         />
       )}
     </View>
@@ -122,50 +109,5 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
-  },
-  formContainer: {
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    padding: 16,
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'flex-end',
-  },
-  scrollView: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
-  },
-  scrollViewContent: {
-    padding: 20,
-    paddingBottom: 40,
-  },
-  input: {
-    backgroundColor: '#f0f0f0',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    fontSize: 16,
-  },
-  submitButton: {
-    backgroundColor: '#4CAF50',
-    padding: 16,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginTop: 16,
-  },
-  submitButtonText: {
-    color: 'white',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  closeButton: {
-    position: 'absolute',
-    top: 10,
-    right: 10,
-    padding: 10,
   },
 });

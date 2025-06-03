@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { View, StyleSheet, SafeAreaView, Text } from 'react-native';
-import { InputBox } from '../components/InputBox';
-import { DashboardMenu, MenuItem } from '../components/DashboardMenu';
+import { InputBox } from '../components/ui/InputBox';
+import { DashboardMenu, MenuItem } from '../components/ui/DashboardMenu';
 
 export default function Dashboard() {
   const [businessName] = useState('No Business');
@@ -21,7 +21,7 @@ export default function Dashboard() {
         <Text style={styles.headerText}>{businessName}</Text>
       </View>
 
-      <View>
+      <View style={styles.searchContainer}>
         <InputBox
           placeholder="Customer Search"
         />
@@ -38,14 +38,19 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   header: {
-    padding: 10,
+    padding: 16,
     alignItems: 'center',
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#ccc',
+    borderBottomColor: '#e0e0e0',
   },
   headerText: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: '#333',
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
   },
 });

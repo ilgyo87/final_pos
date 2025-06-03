@@ -1,77 +1,171 @@
-import React, { useState } from 'react';
-import { View, StyleSheet } from 'react-native';
+// src/app/customers.tsx
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, Alert } from 'react-native';
 import { useForm } from 'react-hook-form';
 import { SearchBar } from '../components/customers/SearchBar';
 import { CustomerList } from '../components/customers/CustomerList';
 import { CreateCustomerButton } from '../components/customers/CreateCustomerButton';
 import { DynamicForm, formFields } from '../components/forms/DynamicForm';
 import { Customer } from '../utils/types';
-
-// Mock data - replace with actual data source
-const MOCK_CUSTOMERS: Customer[] = [
-  {
-    id: '1',
-    firstName: 'John',
-    lastName: 'Doe',
-    phone: '(123) 456-7890',
-    email: 'john.doe@example.com',
-  },
-  {
-    id: '2',
-    firstName: 'Jane',
-    lastName: 'Smith',
-    phone: '(987) 654-3210',
-  },
-];
+import { customerStorage } from '../utils/storage/customerStorage';
+import { phoneUtils } from '../utils/phoneUtils';
 
 type CustomerFormData = {
   firstName: string;
   lastName: string;
-  email: string;
+  email?: string;
   phone: string;
+  address?: string;
+  city?: string;
+  state?: string;      
+  zipCode?: string;
 };
 
 export default function CustomersScreen() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [customers, setCustomers] = useState<Customer[]>(MOCK_CUSTOMERS);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [serverErrors, setServerErrors] = useState<string[]>([]);
   
-  const { control, handleSubmit, reset, formState: { errors } } = useForm<CustomerFormData>();
+  const { 
+    control, 
+    handleSubmit, 
+    reset, 
+    watch,
+    formState: { errors } 
+  } = useForm<CustomerFormData>({
+    defaultValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+    }
+  });
 
-  const filteredCustomers = customers.filter(
-    (customer) =>
-      customer.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      customer.phone.includes(searchQuery) ||
-      (customer.email && customer.email.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  // Load customers on component mount
+  useEffect(() => {
+    loadCustomers();
+  }, []);
+
+  const loadCustomers = async () => {
+    try {
+      setIsLoading(true);
+      const customerData = await customerStorage.getAllCustomers();
+      const customersList = Object.values(customerData);
+      
+      // Sort customers by name
+      customersList.sort((a, b) => {
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+      });
+      
+      setCustomers(customersList);
+    } catch (error) {
+      console.error('Error loading customers:', error);
+      Alert.alert('Error', 'Failed to load customers');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const filteredCustomers = customers.filter((customer) => {
+    const searchTerm = searchQuery.toLowerCase();
+    const normalizedPhone = phoneUtils.normalize(customer.phone);
+    
+    return (
+      customer.firstName.toLowerCase().includes(searchTerm) ||
+      customer.lastName.toLowerCase().includes(searchTerm) ||
+      normalizedPhone.includes(searchTerm.replace(/\D/g, '')) ||
+      customer.phone.includes(searchTerm) ||
+      (customer.email && customer.email.toLowerCase().includes(searchTerm))
+    );
+  });
 
   const handleAddCustomer = () => {
+    setServerErrors([]);
     setIsFormVisible(true);
   };
 
-  const onSubmit = (data: CustomerFormData) => {
+  const onSubmit = async (data: CustomerFormData) => {
     setIsSubmitting(true);
+    setServerErrors([]);
     
-    // Simulate API call
-    setTimeout(() => {
-      const newCustomer: Customer = {
-        ...data,
-        id: Date.now().toString(),
+    try {
+      // Prepare customer data - phone is already normalized by DynamicForm
+      const customerData: Partial<Customer> & {
+        firstName: string;
+        lastName: string;
+        phone: string;
+      } = {
+        firstName: data.firstName.trim(),
+        lastName: data.lastName.trim(),
+        phone: data.phone.trim(), // Already normalized by DynamicForm
+        email: data.email?.trim() || undefined,
+        address: data.address?.trim() || undefined,
+        city: data.city?.trim() || undefined,
+        state: data.state?.trim() || undefined,
+        zipCode: data.zipCode?.trim() || undefined,
+        notes: [],
       };
+
+      // Save customer with validation
+      const result = await customerStorage.saveCustomer(customerData);
       
-      setCustomers(prev => [...prev, newCustomer]);
-      reset();
-      setIsFormVisible(false);
+      if (result.success && result.customer) {
+        // Success - add to local state and close form
+        setCustomers(prev => {
+          const updated = [...prev, result.customer!];
+          // Sort by name
+          updated.sort((a, b) => {
+            const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+            const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+          return updated;
+        });
+        
+        reset();
+        setIsFormVisible(false);
+        
+        Alert.alert(
+          'Success', 
+          `${result.customer.firstName} ${result.customer.lastName} has been added successfully!`
+        );
+      } else {
+        // Handle validation errors
+        if (result.errors) {
+          setServerErrors(result.errors);
+        }
+      }
+    } catch (error) {
+      console.error('Error saving customer:', error);
+      setServerErrors(['An unexpected error occurred. Please try again.']);
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
   const closeForm = () => {
     if (!isSubmitting) {
       setIsFormVisible(false);
+      setServerErrors([]);
+      reset();
     }
+  };
+
+  const handleCustomerPress = (customer: Customer) => {
+    // TODO: Navigate to customer details or edit screen
+    Alert.alert(
+      customer.firstName + ' ' + customer.lastName,
+      `Phone: ${customer.phone}\n${customer.email ? `Email: ${customer.email}` : 'No email'}`
+    );
   };
 
   return (
@@ -84,7 +178,14 @@ export default function CustomersScreen() {
 
       <CustomerList
         customers={filteredCustomers}
-        emptyMessage={searchQuery ? 'No matching customers found' : 'No customers yet'}
+        onCustomerPress={handleCustomerPress}
+        emptyMessage={
+          isLoading 
+            ? 'Loading customers...' 
+            : searchQuery 
+              ? 'No matching customers found' 
+              : 'No customers yet. Add your first customer!'
+        }
       />
 
       <CreateCustomerButton onPress={handleAddCustomer} />
@@ -99,6 +200,9 @@ export default function CustomersScreen() {
           loading={isSubmitting}
           isVisible={isFormVisible}
           onClose={closeForm}
+          watch={watch}
+          serverErrors={serverErrors}
+          formTitle="Add Customer"
         />
       )}
     </View>

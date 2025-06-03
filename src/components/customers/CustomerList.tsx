@@ -1,13 +1,7 @@
+// src/components/customers/CustomerList.tsx
 import React from 'react';
-import { View, Text, StyleSheet, FlatList, ListRenderItem } from 'react-native';
-
-interface Customer {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone?: string;
-  email?: string;
-}
+import { View, Text, StyleSheet, FlatList, ListRenderItem, TouchableOpacity } from 'react-native';
+import { Customer } from '../../utils/types';
 
 interface CustomerListProps {
   customers: Customer[];
@@ -21,14 +15,21 @@ export const CustomerList: React.FC<CustomerListProps> = ({
   emptyMessage = 'No customers found',
 }) => {
   const renderItem: ListRenderItem<Customer> = ({ item }) => (
-    <View style={styles.customerItem}>
+    <TouchableOpacity 
+      style={styles.customerItem}
+      onPress={() => onCustomerPress?.(item)}
+      activeOpacity={0.7}
+    >
       <View style={styles.customerInfo}>
         <Text style={styles.customerName}>
           {item.firstName} {item.lastName}
         </Text>
-        {item.phone && <Text style={styles.customerPhone}>{item.phone}</Text>}
+        <Text style={styles.customerPhone}>{item.phone}</Text>
+        {item.email && (
+          <Text style={styles.customerEmail}>{item.email}</Text>
+        )}
       </View>
-    </View>
+    </TouchableOpacity>
   );
 
   if (customers.length === 0) {
@@ -45,6 +46,7 @@ export const CustomerList: React.FC<CustomerListProps> = ({
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
       contentContainerStyle={styles.listContainer}
+      showsVerticalScrollIndicator={false}
     />
   );
 };
@@ -78,6 +80,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  customerEmail: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 2,
   },
   placeholderContainer: {
     flex: 1,

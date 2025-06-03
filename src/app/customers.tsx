@@ -1,15 +1,25 @@
 import { View, StyleSheet, SafeAreaView, Text, TouchableOpacity, Alert, ScrollView } from 'react-native';
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { generateLabelHTML, printLabel } from '../utils/printUtils';
+import { QRCode } from '../utils/qrUtils';
+import { captureRef } from 'react-native-view-shot';
 
 export default function Customers() {
   const [isPrinting, setIsPrinting] = useState(false);
 
 
+  const qrRef = useRef<View>(null);
+
   const handlePrint = async () => {
     setIsPrinting(true);
     try {
-      const html = await generateLabelHTML(orderData);
+      // Capture the QR code as a base64 image
+      const qrImageBase64 = await captureRef(qrRef, {
+        format: 'png',
+        quality: 1,
+        result: 'base64',
+      });
+      const html = await generateLabelHTML({ ...orderData, qrImageBase64: `data:image/png;base64,${qrImageBase64}` });
       await printLabel(html);
     } catch (error) {
       console.error('Print error:', error);
@@ -40,9 +50,8 @@ export default function Customers() {
         <View style={styles.labelContainer}>
           <View style={styles.labelContent}>
             <View style={styles.qrContainer}>
-              <View style={styles.qrCode}>
-                <Text style={styles.qrPlaceholder}>QR Code</Text>
-                <Text style={styles.qrSmallText}>(Preview)</Text>
+              <View style={styles.qrCode} ref={qrRef} collapsable={false}>
+                <QRCode value={qrPayload} size={70} />
               </View>
             </View>
             <View style={styles.labelInfo}>

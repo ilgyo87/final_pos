@@ -206,13 +206,11 @@ const styles = StyleSheet.create({
   },
   scrollView: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '90%',
+    borderRadius: 20,
+    maxHeight: '85%',
   },
   scrollViewContent: {
     padding: 24,
-    paddingBottom: 40,
   },
   fieldContainer: {
     marginBottom: 20,

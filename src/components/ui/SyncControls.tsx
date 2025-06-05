@@ -57,7 +57,7 @@ export const SyncControls = ({}: SyncControlsProps) => {
           disabled={state.syncStatus.isSyncing || !state.syncStatus.isOnline}
         >
           <Ionicons name="download" size={16} color="#fff" />
-          <Text style={styles.buttonText}>Full Sync</Text>
+          <Text style={styles.buttonText}>Download All Data</Text>
         </TouchableOpacity>
       </View>
     </View>

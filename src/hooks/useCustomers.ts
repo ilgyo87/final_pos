@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { Alert } from 'react-native';
 import { useSyncContext } from '../context/SyncContext';
 import { LocalDataService } from '../services/localDataService';
 import { type Schema } from '../../amplify/data/resource';
@@ -14,7 +15,9 @@ export const useCustomers = () => {
       dispatch({ type: 'ADD_CUSTOMER', payload: newCustomer });
       return newCustomer;
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to create customer' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create customer';
+      console.error('Create customer error:', error);
+      Alert.alert('Error', errorMessage);
       throw error;
     }
   }, [dispatch]);
@@ -25,20 +28,21 @@ export const useCustomers = () => {
       dispatch({ type: 'UPDATE_CUSTOMER', payload: updatedCustomer });
       return updatedCustomer;
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to update customer' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update customer';
+      console.error('Update customer error:', error);
+      Alert.alert('Error', errorMessage);
       throw error;
     }
   }, [dispatch]);
 
   const deleteCustomer = useCallback(async (id: string) => {
     try {
-      const success = await LocalDataService.deleteCustomer(id);
-      if (success) {
-        dispatch({ type: 'DELETE_CUSTOMER', payload: id });
-      }
-      return success;
+      await LocalDataService.deleteCustomer(id);
+      dispatch({ type: 'DELETE_CUSTOMER', payload: id });
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to delete customer' });
+      const errorMessage = error instanceof Error ? error.message : 'Failed to delete customer';
+      console.error('Delete customer error:', error);
+      Alert.alert('Error', errorMessage);
       throw error;
     }
   }, [dispatch]);
@@ -46,7 +50,6 @@ export const useCustomers = () => {
   return {
     customers: state.customers,
     loading: state.loading,
-    error: state.error,
     syncStatus: state.syncStatus,
     createCustomer,
     updateCustomer,

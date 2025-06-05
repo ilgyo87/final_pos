@@ -23,7 +23,7 @@ export const customerStorage = {
       return entries.reduce<Record<string, Customer>>((acc, [key, value]) => {
         if (value) {
           const customer = JSON.parse(value);
-          // Ensure phone is displayed in formatted way
+          // Ensure phone is displayed in formatted way (***) ***-****
           customer.phone = phoneUtils.format(customer.phone);
           // Ensure required fields have default values
           customer.notes = customer.notes || [];

@@ -3,6 +3,8 @@ import { SyncService } from '../services/syncService';
 import { LocalDataService } from '../services/localDataService';
 import NetInfo from '@react-native-community/netinfo';
 import { type Schema } from '../../amplify/data/resource';
+import { Alert } from 'react-native';
+import { Amplify } from 'aws-amplify';
 
 type Customer = Schema['Customer']['type'];
 
@@ -15,7 +17,6 @@ interface SyncState {
     isSyncing: boolean;
   };
   loading: boolean;
-  error: string | null;
 }
 
 type SyncAction = 
@@ -35,8 +36,7 @@ const initialState: SyncState = {
     isOnline: false,
     isSyncing: false,
   },
-  loading: false,
-  error: null,
+  loading: false
 };
 
 const syncReducer = (state: SyncState, action: SyncAction): SyncState => {
@@ -47,35 +47,23 @@ const syncReducer = (state: SyncState, action: SyncAction): SyncState => {
     case 'ADD_CUSTOMER':
       return { 
         ...state, 
-        customers: [...state.customers, action.payload],
-        syncStatus: { 
-          ...state.syncStatus, 
-          pendingChanges: state.syncStatus.pendingChanges + 1 
-        }
+        customers: [...state.customers, action.payload] 
       };
-    
+      
     case 'UPDATE_CUSTOMER':
       return {
         ...state,
-        customers: state.customers.map(c => 
-          c.id === action.payload.id ? action.payload : c
-        ),
-        syncStatus: { 
-          ...state.syncStatus, 
-          pendingChanges: state.syncStatus.pendingChanges + 1 
-        }
+        customers: state.customers.map(customer => 
+          customer.id === action.payload.id ? action.payload : customer
+        )
       };
-    
+      
     case 'DELETE_CUSTOMER':
       return {
         ...state,
-        customers: state.customers.filter(c => c.id !== action.payload),
-        syncStatus: { 
-          ...state.syncStatus, 
-          pendingChanges: state.syncStatus.pendingChanges + 1 
-        }
+        customers: state.customers.filter(customer => customer.id !== action.payload)
       };
-    
+      
     case 'SET_SYNC_STATUS':
       return {
         ...state,
@@ -84,10 +72,7 @@ const syncReducer = (state: SyncState, action: SyncAction): SyncState => {
     
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
-    
-    case 'SET_ERROR':
-      return { ...state, error: action.payload };
-    
+      
     default:
       return state;
   }
@@ -113,6 +98,33 @@ interface SyncProviderProps {
 export const SyncProvider = ({ children }: SyncProviderProps) => {
   const [state, dispatch] = useReducer(syncReducer, initialState);
 
+  // Initialize Amplify and check its configuration
+  useEffect(() => {
+    try {
+      console.log('SyncProvider: Checking Amplify configuration');
+      const config = Amplify.getConfig();
+      console.log('SyncProvider: Current Amplify config:', JSON.stringify(config));
+    } catch (error) {
+      console.error('SyncProvider: Error checking Amplify config:', error);
+      if (error instanceof Error) {
+        console.error('Error message:', error.message);
+      }
+      
+      // Try to initialize Amplify with empty config
+      try {
+        console.log('SyncProvider: Attempting to initialize Amplify');
+        Amplify.configure({});
+        console.log('SyncProvider: Amplify initialized successfully');
+      } catch (initError) {
+        console.error('SyncProvider: Failed to initialize Amplify:', initError);
+        Alert.alert(
+          "Configuration Error",
+          "There was a problem initializing the data service. Sync features may not work correctly."
+        );
+      }
+    }
+  }, []);
+
   // Load local data on mount
   useEffect(() => {
     loadLocalData();
@@ -135,7 +147,8 @@ export const SyncProvider = ({ children }: SyncProviderProps) => {
       const customers = await LocalDataService.getCustomers();
       dispatch({ type: 'SET_CUSTOMERS', payload: customers });
     } catch (error) {
-      dispatch({ type: 'SET_ERROR', payload: 'Failed to load local data' });
+      console.error('Failed to load local data:', error);
+      Alert.alert('Error', 'Failed to load local data');
     } finally {
       dispatch({ type: 'SET_LOADING', payload: false });
     }
@@ -154,10 +167,14 @@ export const SyncProvider = ({ children }: SyncProviderProps) => {
         if (result.success) {
           await updateSyncStatus();
         } else {
-          dispatch({ type: 'SET_ERROR', payload: result.errors.join(', ') });
+          const errorMessage = result.errors?.length ? result.errors.join(', ') : 'Sync completed with errors';
+          console.error('Sync failed:', errorMessage);
+          Alert.alert('Sync Failed', errorMessage);
         }
       } catch (error) {
-        dispatch({ type: 'SET_ERROR', payload: 'Sync failed' });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown sync error';
+        console.error('Sync error:', error);
+        Alert.alert('Sync Error', errorMessage);
       } finally {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { isSyncing: false } });
       }
@@ -171,10 +188,14 @@ export const SyncProvider = ({ children }: SyncProviderProps) => {
           await loadLocalData(); // Reload local data
           await updateSyncStatus();
         } else {
-          dispatch({ type: 'SET_ERROR', payload: result.errors.join(', ') });
+          const errorMessage = result.errors?.length ? result.errors.join(', ') : 'Full sync completed with errors';
+          console.error('Full sync failed:', errorMessage);
+          // Error is only logged to console, no alert shown
         }
       } catch (error) {
-        dispatch({ type: 'SET_ERROR', payload: 'Full sync failed' });
+        const errorMessage = error instanceof Error ? error.message : 'Unknown full sync error';
+        console.error('Full sync error:', error);
+        // Error is only logged to console, no alert shown
       } finally {
         dispatch({ type: 'SET_SYNC_STATUS', payload: { isSyncing: false } });
       }

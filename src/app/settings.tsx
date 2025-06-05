@@ -96,12 +96,6 @@ export default function SettingsScreen({}: SettingsScreenProps) {
           This happens every 5 minutes in the background and only when changes exist.
         </Text>
       </View>
-
-      {state.error && (
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{state.error}</Text>
-        </View>
-      )}
     </View>
   );
 }

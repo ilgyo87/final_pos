@@ -1,6 +1,7 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SyncProvider } from '../context/SyncContext';
 
 type Screen = {
   name: string;
@@ -21,9 +22,10 @@ const screens: Screen[] = [
 
 export default function RootLayout() {
   return (
-    <SafeAreaProvider>
-      <StatusBar style="dark" />
-      <Stack
+    <SyncProvider>
+      <SafeAreaProvider>
+        <StatusBar style="dark" />
+        <Stack
         screenOptions={{
           headerStyle: {
             backgroundColor: '#f8fafc',
@@ -48,7 +50,8 @@ export default function RootLayout() {
             }}
           />
         ))}
-      </Stack>
-    </SafeAreaProvider>
+        </Stack>
+      </SafeAreaProvider>
+    </SyncProvider>
   );
 }

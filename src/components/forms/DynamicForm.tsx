@@ -1,5 +1,5 @@
 // src/components/forms/DynamicForm.tsx - Simplified version
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   StyleSheet, 
@@ -121,9 +121,11 @@ interface DynamicFormProps<T extends FieldValues = FieldValues> {
   loading?: boolean;
   isVisible?: boolean;
   onClose?: () => void;
+  onFormResetRequested?: () => void;
   watch?: UseFormWatch<T>;
   serverErrors?: string[];
   formTitle?: string;
+  showClearButton?: boolean;
 }
 
 export function DynamicForm<T extends FieldValues = FieldValues>({
@@ -134,12 +136,73 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
   submitText = 'Submit',
   loading = false,
   isVisible = true,
-  onClose,
+  onClose = () => {},
+  onFormResetRequested,
   watch,
   serverErrors = [],
   formTitle = 'Form',
+  showClearButton = true,
 }: DynamicFormProps<T>) {
   const [phoneDisplayValues, setPhoneDisplayValues] = useState<Record<string, string>>({});
+  const inputRefs = useRef<Record<string, TextInput | null>>({});
+
+  const handleClearButtonPressed = () => {
+    if (onFormResetRequested) {
+      onFormResetRequested(); // Calls react-hook-form's reset via CustomersScreen
+    }
+    // Directly clear the local state for phone number display
+    setPhoneDisplayValues({});
+  };
+
+  useEffect(() => {
+    if (!watch) return; // Watch function is required
+
+    const phoneFieldNames = fields
+      .filter(f => f.type === 'phone')
+      .map(f => f.name as string);
+
+    if (phoneFieldNames.length === 0) return; // No phone fields to monitor
+
+    // Subscribe to changes in form values
+    const subscription = watch(formValues => {
+      phoneFieldNames.forEach(fieldName => {
+        const RHFValue = formValues[fieldName];
+
+        // If the react-hook-form value for this phone field is cleared/empty
+        if (RHFValue === undefined || RHFValue === '' || RHFValue === null) {
+          // Update the phoneDisplayValues state using the functional update form
+          // to ensure we're working with the latest state.
+          setPhoneDisplayValues(prevDisplayValues => {
+            // Only update if the display value isn't already empty
+            if (prevDisplayValues[fieldName] !== undefined && prevDisplayValues[fieldName] !== '') {
+              const newDisplayValues = { ...prevDisplayValues };
+              newDisplayValues[fieldName] = ''; // Set to empty string to clear display
+              return newDisplayValues;
+            }
+            return prevDisplayValues; // No change needed for this display value
+          });
+        }
+        // Note: We don't need an 'else' case here to set the display value
+        // from RHFValue because handlePhoneChange already does that during user input.
+        // This effect is primarily for reacting to programmatic RHF clears (e.g., reset()).
+      });
+    });
+
+    // Cleanup subscription on unmount or when dependencies change
+    return () => subscription.unsubscribe();
+  }, [watch, fields, setPhoneDisplayValues]); // Dependencies: watch, fields, and the stable setPhoneDisplayValues
+
+  useEffect(() => {
+    if (isVisible) {
+      // Attempt to focus the 'firstName' field after a short delay
+      const firstNameField = fields.find(f => f.name === 'firstName');
+      if (firstNameField) {
+        setTimeout(() => {
+          inputRefs.current['firstName']?.focus();
+        }, 100); // Delay to ensure modal and input are rendered
+      }
+    }
+  }, [isVisible, fields]);
 
   const renderValidationIcon = (fieldName: string, value: string, field: FormField) => {
     if (!value) return null;
@@ -214,7 +277,8 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
                       setPhoneDisplayValues(prev => ({ ...prev, [field.name]: formatted }));
                     }
                   }}
-                  onChangeText={(text) => {
+                  ref={(el) => { inputRefs.current[field.name] = el; }}
+                onChangeText={(text) => {
                     // Normalize the input and limit to 10 digits
                     const normalized = phoneUtils.normalize(text);
                     if (normalized.length <= 10) {
@@ -247,6 +311,7 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
                 numberOfLines={field.numberOfLines}
                 editable={!field.disabled && !loading}
                 onBlur={onBlur}
+                ref={(el) => { inputRefs.current[field.name] = el; }}
                 onChangeText={onChange}
                 value={value as string}
               />
@@ -279,17 +344,30 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
 
       {fields.map(renderInput)}
       
-      <TouchableOpacity
-        style={[styles.submitButton, loading && styles.submitButtonDisabled]}
-        onPress={onSubmit}
-        disabled={loading}
-      >
-        {loading ? (
-          <ActivityIndicator color="#fff" />
-        ) : (
-          <Text style={styles.submitText}>{submitText}</Text>
-        )}
-      </TouchableOpacity>
+      <View style={styles.buttonContainer}>
+        <View style={styles.buttonGroup}>
+          {showClearButton && (
+            <TouchableOpacity
+              style={[styles.clearButton, loading && styles.clearButtonDisabled]}
+              onPress={handleClearButtonPressed}
+              disabled={loading}
+            >
+              <Text style={styles.clearButtonText}>Clear</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity
+            style={[styles.submitButton, loading && styles.submitButtonDisabled]}
+            onPress={onSubmit}
+            disabled={loading}
+          >
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitText}>Save</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
     </View>
   );
 
@@ -306,13 +384,13 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
     >
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.modalOverlay}>
-          <KeyboardAvoidingView 
+          <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
             style={styles.keyboardAvoidingView}
           >
-            <TouchableWithoutFeedback>
+            <View onStartShouldSetResponder={() => true} onTouchEnd={(e) => e.stopPropagation()}>
               <ScrollView 
-                style={styles.scrollView}
+                style={[styles.scrollView, styles.modalContent]} // Apply modalContent style here
                 contentContainerStyle={styles.scrollViewContent}
                 keyboardShouldPersistTaps="handled"
                 showsVerticalScrollIndicator={false}
@@ -325,7 +403,7 @@ export function DynamicForm<T extends FieldValues = FieldValues>({
                 </View>
                 {formContent}
               </ScrollView>
-            </TouchableWithoutFeedback>
+            </View>
           </KeyboardAvoidingView>
         </View>
       </TouchableWithoutFeedback>
@@ -337,6 +415,7 @@ const styles = StyleSheet.create({
   formContent: {
     width: '100%',
     padding: 16,
+    paddingTop: 5,
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
@@ -347,8 +426,9 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   keyboardAvoidingView: {
-    flex: 1,
-    justifyContent: 'flex-end',
+    width: '100%', // Ensure KAV takes full width
+    alignItems: 'center', // Center the ScrollView (modal content) horizontally
+    justifyContent: 'flex-end', // Align ScrollView to the bottom of KAV (though KAV is already at screen bottom)
   },
   modalContent: {
     backgroundColor: 'white',
@@ -356,7 +436,7 @@ const styles = StyleSheet.create({
     width: '90%',
     maxWidth: 800, 
     maxHeight: '90%',
-    padding: 0,
+    padding: 3,
     overflow: 'hidden',
   },
   scrollView: {
@@ -380,9 +460,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
-  closeButton: {
-    padding: 4,
-  },
+
   fieldContainer: {
     marginBottom: 16,
     width: '48%',
@@ -424,10 +502,11 @@ const styles = StyleSheet.create({
     textAlignVertical: 'top',
   },
   leftIcon: {
-    marginRight: 8,
+    marginRight: 18,
+    paddingLeft: 19,
   },
   validationIcon: {
-    marginLeft: 8,
+    marginLeft: 12,
   },
   errorText: {
     marginTop: 4,
@@ -449,17 +528,54 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     backgroundColor: '#007AFF',
-    padding: 16,
-    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'center',
+    minWidth: 100,
+    height: 40,
   },
   submitButtonDisabled: {
-    backgroundColor: '#a5d6a7',
+    backgroundColor: '#999',
+    opacity: 0.7,
+  },
+  closeButton: {
+    padding: 8,
   },
   submitText: {
     color: '#fff',
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+  },
+  buttonContainer: {
+    width: '100%',
+    marginTop: 24,
+    alignItems: 'flex-end',
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    gap: 12,
+    width: '100%',
+  },
+  clearButton: {
+    backgroundColor: '#FFD700',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 80,
+    height: 40,
+  },
+  clearButtonText: {
+    color: '#000',
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  clearButtonDisabled: {
+    opacity: 0.5,
   },
 });

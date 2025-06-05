@@ -90,17 +90,8 @@ export const customerStorage = {
       );
 
       if (duplicateCheck.phoneExists || duplicateCheck.emailExists) {
-        const errors: string[] = [];
-        if (duplicateCheck.phoneExists) {
-          errors.push(`Phone number already exists for ${duplicateCheck.existingCustomer?.firstName} ${duplicateCheck.existingCustomer?.lastName}`);
-        }
-        if (duplicateCheck.emailExists) {
-          errors.push(`Email already exists for ${duplicateCheck.existingCustomer?.firstName} ${duplicateCheck.existingCustomer?.lastName}`);
-        }
-
         return {
           success: false,
-          errors,
           duplicateCheck
         };
       }

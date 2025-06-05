@@ -90,7 +90,12 @@ export default function CustomersScreen() {
 
   const handleAddCustomer = () => {
     setServerErrors([]);
+    reset(); // Reset form fields when opening the form
     setIsFormVisible(true);
+  };
+
+  const handleClearForm = () => {
+    reset();
   };
 
   const onSubmit = async (data: CustomerFormData) => {
@@ -138,11 +143,29 @@ export default function CustomersScreen() {
           'Success', 
           `${result.customer.firstName} ${result.customer.lastName} has been added successfully!`
         );
-      } else {
-        // Handle validation errors
-        if (result.errors) {
-          setServerErrors(result.errors);
+      } else if (result.duplicateCheck) {
+        // Handle duplicate entries with an alert
+        const { duplicateCheck } = result;
+        const customerName = duplicateCheck.existingCustomer ? 
+          `${duplicateCheck.existingCustomer.firstName} ${duplicateCheck.existingCustomer.lastName}` : 'another customer';
+        
+        let message = '';
+        if (duplicateCheck.phoneExists && duplicateCheck.emailExists) {
+          message = `This phone number and email already exist for ${customerName}.`;
+        } else if (duplicateCheck.phoneExists) {
+          message = `This phone number already exists for ${customerName}.`;
+        } else if (duplicateCheck.emailExists) {
+          message = `This email already exists for ${customerName}.`;
         }
+        
+        Alert.alert(
+          'Duplicate Entry',
+          message,
+          [{ text: 'OK' }]
+        );
+      } else if (result.errors) {
+        // Handle other validation errors
+        setServerErrors(result.errors);
       }
     } catch (error) {
       console.error('Error saving customer:', error);
@@ -200,9 +223,10 @@ export default function CustomersScreen() {
           loading={isSubmitting}
           isVisible={isFormVisible}
           onClose={closeForm}
-          watch={watch}
+          onFormResetRequested={handleClearForm}
           serverErrors={serverErrors}
           formTitle="Add Customer"
+          showClearButton={true}
         />
       )}
     </View>
